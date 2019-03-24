@@ -17,3 +17,6 @@ twine = "*"
 
 [packages]
 click = "*"
+wheel = "*"
+numpy = "*"
+scipy = "*"
