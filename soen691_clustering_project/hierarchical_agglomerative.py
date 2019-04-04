@@ -58,38 +58,3 @@ class HierarchicalAgglomerative:
             raise ValueError(
                 "Incorret type for amount of clusters '{:d}'. Amount of cluster should be an integer.".format(
                     self.__number_of_clusters))
-
-
-if __name__ == '__main__':
-    from pyclustering.utils import read_sample
-    from pyclustering.samples.definitions import FCPS_SAMPLES
-    from pyclustering.cluster.agglomerative import agglomerative, type_link
-    from pyclustering.cluster import cluster_visualizer
-
-    fcps_data = read_sample(FCPS_SAMPLES.SAMPLE_LSUN)
-    hierarchical_agglomerative = HierarchicalAgglomerative(fcps_data, 3)
-    hierarchical_agglomerative.clustering()
-
-    clusters = hierarchical_agglomerative.get_clusters()
-    len_clusters = sorted([len(cluster) for cluster in clusters])
-    print('-------------------')
-    print(clusters)
-    print(len_clusters)
-
-    agglomerative = agglomerative(fcps_data, 3, type_link.CENTROID_LINK)
-    agglomerative.process()
-
-    clusters2 = agglomerative.get_clusters()
-    len_clusters2 = sorted([len(cluster) for cluster in clusters2])
-
-    print('-------------------')
-    print(clusters2)
-    print(len_clusters2)
-
-    visualizer = cluster_visualizer()
-    visualizer.append_clusters([cluster.indexes for cluster in clusters], fcps_data)
-    visualizer.show()
-
-    visualizer2 = cluster_visualizer()
-    visualizer2.append_clusters([cluster for cluster in clusters2], fcps_data)
-    visualizer2.show()
