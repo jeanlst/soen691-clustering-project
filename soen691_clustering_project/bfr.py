@@ -1,7 +1,8 @@
 
 """BFR implementation"""
 import numpy as np
-import math 
+import math
+from cluster import Cluster
 
 class BFR:
 
@@ -19,8 +20,10 @@ class BFR:
         self.__k = k
         self.__alpha = alpha
         self.__beta = beta
-
-        self.__dims = data.shape[0]
+        #Data Dimensionality
+        self.__dims = data.shape[1]
+        #list of Clusters
+        self.__clusters = []
 
     def __convertStoG(self, mtx):
         '''
@@ -39,9 +42,9 @@ class BFR:
         nmtx = np.zeros((nrows, ncols))
 
         #set values
-        nmtx[:,:cols] = mtx
+        nmtx[:,:cols] = mtx * 1.0
         nmtx[:,cols:-1] = mtx ** 2.0
-        nmtx[:,-1] = 1
+        nmtx[:,-1] = 1 * 1.0
 
         return nmtx
 
@@ -130,9 +133,6 @@ class BFR:
         #append indices to end of centroid list
         centroids = np.hstack((centroids, c_inds))
 
-        print('INIT_CENTROIDS:')
-        print(centroids)
-
         #assign to each point closest centroid
         #column vector for assignments
         assignments = np.apply_along_axis(lambda x: self.__closest(x, centroids, dims), 1, mtx)
@@ -150,8 +150,6 @@ class BFR:
         #get all centroid IDs
 
         cent_IDs = np.unique(mtx[:,-1])
-
-        print('Number of Centroids: ', cent_IDs.shape[0])
 
         #calculate averages
 
@@ -434,6 +432,11 @@ class BFR:
 
         c_ids = np.unique(mtx[:,-1])
 
+        #print("Centroid IDs to merge")
+        #print(c_ids)
+        #print("Merge Matrix:")
+        #print(mtx)
+
         for i in c_ids:
             #indices for the merge
             merge_inds = np.where(mtx[:,-1] == i)[0]
@@ -463,6 +466,9 @@ class BFR:
         #convert NaN values to 0
         mh_dists = np.nan_to_num(mh_dists)
 
+        #print("Mahalanobis Distances")
+        #print(mh_dists)
+
         #check if distance is less than threshold
         #compress points to centroid if distance is less 
         threshold = mh_dists < radius
@@ -474,6 +480,8 @@ class BFR:
         #separate matrix into 2: indices to be merged and 
         #those to be left alone
 
+        #print("Full mtx: ", mtx.shape)
+
         #rows to merge
         to_merge = mtx[compr_inds,:]
 
@@ -482,10 +490,16 @@ class BFR:
 
         to_leave = mtx[noCompr_inds,:]
 
+        #print("To merge: ", to_merge.shape)
+        #print("To keep: ", to_leave.shape)
+
         #merge selected indices, then append to kept
         merged = self.__pc_merge(to_merge)
 
         new_mtx = np.vstack((merged, to_leave))
+
+        #print("Remade Matrix:")
+        #print(new_mtx)
 
         return new_mtx
 
@@ -560,7 +574,7 @@ class BFR:
         while stop_merge == False:
 
             #get the two tightest row indices, and the value
-            tight_ind, t_val = self.__nearest_cls(mtx[:,:-1], dims)
+            tight_ind, t_val = self.__get_tightest_pair(mtx[:,:-1], dims)
 
             #if the value is greater than beta, stop
             if t_val > beta:
@@ -650,24 +664,96 @@ class BFR:
             #perform agglomerative hierarchical clustering on cls_plus_t
             cls_merged = self.__hierar_cls_agg_tight(cls_plus_t, k2, beta, dims)
 
+            #slice loose centroids
+            loose_cls = subcls_cts[loose_inds,:]
+
             #get remaining singletons that were not merged
-            subc_nm = np.apply_along_axis(lambda x: x[-1] in loose_inds, 1, subclusters)
+            subc_nm = np.apply_along_axis(lambda x: x[-1] in loose_cls[:,-1], 1, subclusters)
 
             unmerged_inds = np.where(subc_nm == True)[0]
 
-            print('Unmerged inds:')
-            print(unmerged_inds)
+            #print('Unmerged inds:', unmerged)
+            #print(unmerged_inds)
 
             #slice singleton list
             loose_singles = subclusters[unmerged_inds,:]
 
-            print('cls_merged:', cls_merged.shape)
-            print('loose_singles: ', loose_singles.shape)
-
             #stack with centroids/tight clusters
             final_mtx = np.vstack((cls_merged, loose_singles))
+            
         else:
             #no tight subclusters, just return original matrix
             final_mtx = mtx
 
         return final_mtx
+
+    def __create_clusters(self, centroids, mtx):
+        """
+        Given a list of centroids and a matrix of assigned points, create cluster objects
+        and store them
+        """
+
+        #for each centroid:
+        for i in range(centroids.shape[0]):
+
+            #create base cluster
+            cluster_W = Cluster(None, None)
+            #set center
+            #take sum of points and divide by size of group
+            cluster_W.center = list(centroids[i,:self.__dims] / centroids[i,-2])
+            #add to list of clusters
+            self.__clusters.append(cluster_W)
+        #iterating through matrix to store values
+        for i in range(mtx.shape[0]):
+            #identify assigned centroid
+            cent = mtx[i,-1]
+            #get points
+            point = list(mtx[i,:self.__dims])
+            #add to the right cluster
+            self.__clusters[int(cent)].points.append(point)
+            self.__clusters[int(cent)].indexes.append(i)
+
+    def get_clusters(self):
+        """
+        Return list of clusters
+        """
+
+        return self.__clusters
+
+    def cluster_noPart(self):
+        """
+        Cluster the given data without partitioning it. Essentially going through
+        one cycle of KMEANS, PRIMARY COMPRESSION and SECONDARY COMPRESSION, then returning a result.
+        """
+
+        #begin by performing K-Means on the data
+
+        data = self.__data
+
+        assignments_k, centroids_k = self.__kmeans_group(data, self.__k)
+
+        #next, do primary compression
+
+        compressed_asg = self.__primary_compression(assignments_k, centroids_k, self.__dims, self.__alpha)
+
+        #next, secondary compression
+        #using k2 = 2 * K for now.
+        compressed2_asg = self.__secondary_compression(compressed_asg, centroids_k, self.__dims, self.__beta, self.__k * 2)
+
+        #reassign centroids to points from secondary compr.
+        reassigned = self.__assign_pts(compressed2_asg[:,:-1], centroids_k, self.__dims)
+
+        #reassign until convergeance
+        #get final centroids
+        assignments_k, centroids_k = self.__kmeans_converge(reassigned, centroids_k, self.__k, self.__dims)
+
+        #convert data to group format
+        data_g = self.__convertStoG(self.__data)
+
+        #assign to original points
+        final_assign = self.__assign_pts(data_g, centroids_k, self.__dims)
+
+        #create cluster objects
+        self.__create_clusters(centroids_k, final_assign)
+
+        #return final_assign, centroids_k
