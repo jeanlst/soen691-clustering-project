@@ -1,14 +1,17 @@
 # -*- coding: utf-8 -*-
 
 """Main module."""
-from pyclustering.utils import read_sample
-from pyclustering.samples.definitions import FCPS_SAMPLES
-from pyclustering.cluster import cluster_visualizer
-from pyclustering.cluster.cure import cure as p_cure
-from cure import Cure
 
+import glob
+import os
 from collections import defaultdict
-import glob, os
+
+from cure import Cure
+from kmeans import KMeans
+from hierarchical_agglomerative import HierarchicalAgglomerative
+from visualizer import ClusteringVisualizer
+
+import numpy as np
 
 
 def read_2dshaped(filename):
@@ -27,6 +30,15 @@ def read_all_2dshaped(directory, extension, pattern='*'):
     return data_dict
 
 
+def plot_clustering(fig, data, clusters, x_label, y_label, title, ax=None):
+    if not ax:
+        ax = fig.add_subplot(111)
+
+    ax.set_ylabel(y_label)
+    ax.set_xlabel(x_label)
+    ax.set_title(title)
+
+
 if __name__ == '__main__':
     all_data = read_all_2dshaped('./data/2d/shaped/', '.dat')
     data_name = 'spiral'
@@ -37,28 +49,19 @@ if __name__ == '__main__':
     len_data = [len(cluster) for cluster in all_data[data_name].values()]
 
     number_of_clusters = len(all_data[data_name].keys())
-    alpha = 0.15
-    c = 10
 
-    cure = Cure(data, number_of_clusters, alpha, c)
-    cure.clustering()
+    X_1 = np.random.multivariate_normal(mean=[4, 0], cov=[[1, 0], [0, 1]], size=75)
+    X_2 = np.random.multivariate_normal(mean=[6, 6], cov=[[2, 0], [0, 2]], size=250)
+    X_3 = np.random.multivariate_normal(mean=[1, 5], cov=[[1, 0], [0, 2]], size=20)
+    df = np.concatenate([X_1, X_2, X_3])
 
-    len_clusters = sorted([len(cluster) for cluster in cure.get_clusters()])
+    kmeans = KMeans(df.tolist(), 3)
+    kmeans.clustering()
 
-    print('------------------------------------------------------------------------')
+    # hac = HierarchicalAgglomerative(df.tolist(), 3)
+    # hac.clustering()
 
-    cure_instance = p_cure(data, number_of_clusters, compression=alpha, number_represent_points=c, ccore=False)
-    cure_instance.process()
-
-    len_clusters_2 = sorted([len(cluster) for cluster in cure.get_clusters()])
-
-    print('------------------------------------------------------------------------')
-    print(sorted(len_data), len_clusters, len_clusters_2)
-
-    visualizer = cluster_visualizer()
-    visualizer.append_clusters([cluster.indexes for cluster in cure.get_clusters()], data)
-    visualizer.show()
-
-    visualizer2 = cluster_visualizer()
-    visualizer2.append_clusters([cluster for cluster in cure_instance.get_clusters()], data)
-    visualizer2.show()
+    visualizer = ClusteringVisualizer(number_canvas=2)
+    visualizer.add_clustering(kmeans.get_indexes(), df.tolist(), canvas=0)
+    visualizer.add_clustering(kmeans.get_clusters(), df.tolist(), canvas=1)
+    visualizer.plot()
