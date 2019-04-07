@@ -5,9 +5,10 @@ import numpy as np
 from cluster import CureCluster
 from utils import squared_euclidean_distance
 from kd_tree import KDTree
+from clustering import Clustering
 
 
-class Cure:
+class Cure(Clustering):
     def __init__(self, data, number_of_clusters, alpha, c):
         # data is a Numpy-array with rows as points and k
         # is the number of clusters
@@ -173,6 +174,9 @@ class Cure:
 
     def get_clusters(self):
         return self.__clusters
+
+    def get_indexes(self):
+        return [cluster.indexes for cluster in self.__clusters]
 
     def get_representors(self):
         return self.__representors
