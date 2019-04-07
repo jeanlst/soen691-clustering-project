@@ -3,6 +3,7 @@
 """ KMeans class."""
 import random
 from utils import squared_euclidean_distance
+from clustering import Clustering
 
 import numpy as np
 
@@ -26,7 +27,7 @@ def initialize_centers(data, k):
     return centers
 
 
-class KMeans:
+class KMeans(Clustering):
     def __init__(self, data, k, tolerance=0.001, max_iter=200):
         self.__data = np.array(data)
         self.__clusters = []
@@ -94,6 +95,9 @@ class KMeans:
         return sse
 
     def get_clusters(self):
+        return self.__clusters
+
+    def get_indexes(self):
         return self.__clusters
 
     def get_centers(self):
