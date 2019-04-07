@@ -58,10 +58,14 @@ if __name__ == '__main__':
     kmeans = KMeans(df.tolist(), 3)
     kmeans.clustering()
 
-    # hac = HierarchicalAgglomerative(df.tolist(), 3)
-    # hac.clustering()
+    hac = HierarchicalAgglomerative(df.tolist(), 3)
+    hac.clustering()
 
-    visualizer = ClusteringVisualizer(number_canvas=2)
+    cure = Cure(df.tolist(), 3, 0.3, 10)
+    cure.clustering()
+
+    visualizer = ClusteringVisualizer(number_canvas=3, number_columns=1, titles=['KMeans', 'HAC', 'CURE'])
     visualizer.add_clustering(kmeans.get_indexes(), df.tolist(), canvas=0)
-    visualizer.add_clustering(kmeans.get_clusters(), df.tolist(), canvas=1)
-    visualizer.plot()
+    visualizer.add_clustering(hac.get_indexes(), df.tolist(), canvas=1)
+    visualizer.add_clustering(cure.get_indexes(), df.tolist(), canvas=2)
+    visualizer.plot(invisible_axis=True)
