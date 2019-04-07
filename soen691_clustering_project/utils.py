@@ -13,10 +13,10 @@ def squared_euclidean_distance(x, y):
         return (x - y) ** 2.0
     elif (type(x) == list and type(y) == list) or (type(x) == np.ndarray and type(y) == np.ndarray):
         if len(x) == len(y):
-                distance = 0.0
-                for i in range(0, len(x)):
-                    distance += (x[i] - y[i]) ** 2.0
-                return distance
+            distance = 0.0
+            for i in range(0, len(x)):
+                distance += (x[i] - y[i]) ** 2.0
+            return distance
         else:
             raise ValueError('len of x ({}) != y ({})'.format(len(x), len(y)))
     else:
