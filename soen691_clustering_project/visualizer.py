@@ -124,7 +124,7 @@ class ClusteringVisualizer:
         if figure is not None:
             cluster_figure = figure
         else:
-            cluster_figure = plt.figure()
+            cluster_figure = plt.figure(figsize=(12, 7))
 
         maximum_cols = self.__number_of_columns
         maximum_rows = math.ceil((self.__number_of_canvas + canvas_shift) / maximum_cols)
