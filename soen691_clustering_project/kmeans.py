@@ -27,7 +27,7 @@ def initialize_centers(data, k):
 
 
 class KMeans:
-    def __init__(self, data, k, tolerance=0.001, max_iter=100):
+    def __init__(self, data, k, tolerance=0.001, max_iter=200):
         self.__data = np.array(data)
         self.__clusters = []
         self.__k = k
