@@ -6,7 +6,7 @@ from cluster import Cluster
 
 class BFR:
 
-    def __init__(self, data, k, alpha=1, beta=1):
+    def __init__(self, data=None, k=None, alpha=1, beta=1):
         """
         DATA: numpy matrix
         K: Number of Clusters
@@ -21,7 +21,7 @@ class BFR:
         self.__alpha = alpha
         self.__beta = beta
         #Data Dimensionality
-        self.__dims = data.shape[1]
+        self.__dims = None if self.__data == None else data.shape[1]
         #list of Clusters
         self.__clusters = []
 
@@ -225,8 +225,17 @@ class BFR:
     def __kmeans_assign(self, mtx, centroids, k, dims):
         '''
         Given an unassigned matrix and some centroids, assign centroids to
-        rows then perform 
+        rows then perform kmeans
         '''
+
+        #take matrix and centroids and assign to points
+        assigned = self.__assign_pts(mtx, centroids, dims)
+
+        #perform k_means until convergeance
+        final_asg, final_cents = self.__kmeans_converge(assigned, centroids, k, dims)
+
+        #return new assignments and centroids
+        return final_asg, final_cents
 
     def __kmeans_group(self, data, k, convert=True, dm=1):
         '''
@@ -252,12 +261,6 @@ class BFR:
 
         #initial assignment
         init_mtx, init_cents = self.__kmeans_groups_init(mtx, k, dims)
-
-        print("Initial Assignment Complete")
-        print("Assignments:")
-        print(init_mtx)
-        print("Centroids:")
-        print(init_cents)
 
         #loop until convergeance
         final_asg, final_cents = self.__kmeans_converge(init_mtx, init_cents, k, dims)
@@ -687,6 +690,28 @@ class BFR:
 
         return final_mtx
 
+    def __bfr_loop(self, data, centroids, k, dims):
+        """
+        The standard loop for the BFR algorithm:
+        K-means, then Primary Compression, Then Secondary Compression
+        K-means not done from scratch, points
+        data: matrix of unassigned points, in cluster format
+        centroids: matrix of points chosen as centroids
+        """
+
+        #assign data to centroids and perform k-means
+        mtx_assign, new_cents = self.__kmeans_assign(data, centroids, self.__k, self.__dims)
+
+        #primary compression
+        compressed_asg = self.__primary_compression(mtx_assign, new_cents, self.__dims, self.__alpha)
+
+        #secondary compression
+        #k2 > K. Set to k2 = K * 2
+        compressed2_asg = self.__secondary_compression(compressed_asg, new_cents, self.__dims, self.__beta, self.__k * 2)
+
+        #return compressed matrix and new centroids
+        return compressed2_asg, new_cents
+
     def __create_clusters(self, centroids, mtx):
         """
         Given a list of centroids and a matrix of assigned points, create cluster objects
@@ -757,3 +782,141 @@ class BFR:
         self.__create_clusters(centroids_k, final_assign)
 
         #return final_assign, centroids_k
+
+    def cluster_partition(self, filename, chunk_size, separator, k, alpha, beta, truths=True):
+        """
+        Read a dataset from file in chunks of the specified size.
+        filename: name of file to read
+        chunk_size: size of chunks to load into memory. in Bytes
+        separator: separator for the file to read
+        Then BFR arguments...
+        truths : will ignore last column during clustering, assuming these are true values
+        """
+        #set params
+        self.__data = None
+        self.__k = k
+        self.__alpha = alpha
+        self.__beta = beta
+    
+        #list of Clusters
+        self.__clusters = []
+
+        #open the file
+        f = open(filename, "r")
+
+        #read the first line to determine number of rows / item size
+        line1 = f.readline()
+        #turn into numpy array
+        #take 1 less column is truths values are read
+        l1 = np.fromstring(line1, sep=separator) if truths == False else np.fromstring(line1, sep=separator)[:-1]
+        #get memory size per line, size is size of item by number of columns
+        chunk_line = l1.itemsize * l1.size
+        #get number of columns
+        nb_cols = l1.size
+
+        #
+
+        #Data Dimensionality
+        self.__dims = nb_cols
+
+        #get number of lines to load per partition
+        lines_per_chunk = int(chunk_size / chunk_line)
+        #check for end of file
+        end_file = False
+        #checks for first iteration exception
+        first_iter = True
+        f_iter2 = True
+        #sum total of data to return
+        data_total = np.zeros(nb_cols).reshape(1,nb_cols)
+        #holding centroids
+        cents = None
+
+        while end_file == False:
+            #until end of file is reached
+
+            #array with dummy line, to be removed
+            data_m = np.zeros(nb_cols).reshape(1,nb_cols)
+
+            #First, read the next chunk of data into memory
+            for i in range(lines_per_chunk):
+
+                #check if this is the first iteration
+                if first_iter == True:
+                    #special case for first iteration
+                    #add first line to matrix
+                    data_m = np.vstack((data_m, l1))
+                    #remove first iteration
+                    first_iter = False
+                else:
+                    #normal execution
+                    #read a line from the file
+                    nline = f.readline()
+                    #check line size
+                    l_size = len(nline)
+                    #if the string read is of length 0, end of file reached
+                    if l_size == 0:
+                        #mark end of file, break loop
+                        end_file = True
+                        break
+                    #otherwise, continue
+                    #convert to numpy array
+                    line_a = np.fromstring(nline, sep=separator) if truths == False else np.fromstring(nline, sep=separator)[:-1]
+                    #add to matrix
+                    data_m = np.vstack((data_m, line_a))
+        
+            #loop complete
+
+            #if resulting matrix had no rows added, stop loop
+            if data_m.shape[0] == 1:
+                break
+            
+            #remove dummy line
+            data_m = data_m[1:,:]
+
+            #otherwise, continue
+
+            #convert data to summary format
+            data_m = self.__convertStoG(data_m)
+
+            #do operations here
+            #add to totals
+            if f_iter2 == True: #check for first iteration
+                #keep the uncompressed data in memory for final assignment
+                self.__data = data_m
+
+                #set as total
+                data_total = data_m
+
+                #run K-means on the data, get assigned points and centroids
+                #remove the assigned column from data_total
+                data_total, cents = self.__kmeans_group(data_total, self.__k, convert=False, dm=self.__dims)
+
+                #pass a loop of BFR
+                data_total, cents = self.__bfr_loop(data_total[:,:-1], cents, self.__k, self.__dims)
+                #drop point assignments
+                data_total = data_total[:,:-1]
+
+                #first iter done
+                f_iter2 = False
+            else:
+                #add to uncompressed data
+                self.__data = np.vstack((self.__data, data_m))
+
+                #add to working data
+                data_total = np.vstack((data_total, data_m))
+                #perform BFR loop
+                data_total, cents = self.__bfr_loop(data_total, cents, self.__k, self.__dims)
+                #drop point assignments
+                data_total = data_total[:,:-1]
+
+
+        #close file
+        f.close()
+
+        #final assignment
+        final_assign = self.__assign_pts(self.__data, cents, self.__dims)
+
+        #convert to cluster object
+        self.__create_clusters(cents, final_assign)
+
+        #done
