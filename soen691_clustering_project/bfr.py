@@ -21,7 +21,7 @@ class BFR:
         self.__alpha = alpha
         self.__beta = beta
         #Data Dimensionality
-        self.__dims = None if self.__data == None else data.shape[1]
+        self.__dims = None if data.all() = None else data.shape[1]
         #list of Clusters
         self.__clusters = []
 
@@ -744,6 +744,13 @@ class BFR:
         """
 
         return self.__clusters
+
+    def get_indexes(self):
+        """
+        Return list of Indexes
+        """
+
+        return [cluster.indexes for cluster in self.__clusters]
 
     def cluster_noPart(self):
         """
