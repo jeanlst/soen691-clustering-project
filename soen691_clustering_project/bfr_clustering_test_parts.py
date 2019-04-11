@@ -29,7 +29,7 @@ if __name__ == "__main__":
     #1000 lines, 10 features, 3 centres
     data_gen, y = make_blobs(n_samples=2500, n_features=20, centers=nb_cts, cluster_std=r_stds, center_box=(-10,10))
 
-    print("Data Size: ", data_gen.shape)
+    #print("Data Size: ", data_gen.shape)
     #estimate filesize
     fsize = data_gen.size * data_gen.itemsize
     #save to file
@@ -50,7 +50,7 @@ if __name__ == "__main__":
         itr = 10
 
         for j in range(itr):
-            print("Clustering, chunk size: ", fsize / splits[i], " aka ", splits[i], " iteration: ", j)
+            #print("Clustering, chunk size: ", fsize / splits[i], " aka ", splits[i], " iteration: ", j)
 
             bfr_c1 = BFR()
 
@@ -62,13 +62,13 @@ if __name__ == "__main__":
             #add to times
             times[i] += (et - st)
 
-            print("Complete. Time: ", et - st)
+            #print("Complete. Time: ", et - st)
 
         #average
         times[i] = times[i] / itr
 
-    print("List of Times")
-    print(times)
+    #print("List of Times")
+    #print(times)
 
     #plotting
 
