@@ -21,7 +21,7 @@ class BFR:
         self.__alpha = alpha
         self.__beta = beta
         #Data Dimensionality
-        self.__dims = None if data.all() = None else data.shape[1]
+        self.__dims = None
         #list of Clusters
         self.__clusters = []
 
@@ -58,8 +58,8 @@ class BFR:
         n2 = row2[dims * 2]
 
         #means
-        mean1 = row1 / n1
-        mean2 = row2 / n2
+        mean1 = (row1 * 1.0) / n1
+        mean2 = (row2 * 1.0) / n2
 
         #distance calculation
         #squared euclidean
@@ -87,7 +87,16 @@ class BFR:
         #return 'ID no.' of closest centroid
         return centroids[min_index,-1]
 
-    def __centroid_selection(self, mtx, k):
+    def __cmean(self, row, dims):
+        """
+        given a row, return the mean
+        """
+
+        nrow = (row[:dims] * 1.0) / row[dims * 2]
+
+        return nrow
+
+    def __centroid_selection(self, mtx, k, dims):
         '''
         Select centroid at random, ensuring that the selected centroids are all 
         different values
@@ -106,8 +115,13 @@ class BFR:
             #get the centroids
             selected = mtx[indices,:]
 
+            #get means
+            sel_means = np.apply_along_axis(lambda x: self.__cmean(x, dims), 1, selected)
+
+            #should be more robust way to check uniqueness
+
             #filter for uniqueness
-            unique_cents = np.unique(selected, axis=0)
+            unique_cents = np.unique(sel_means, axis=0)
 
             #check if unique and orig are same size
             if selected.shape[0] == unique_cents.shape[0]:
@@ -127,7 +141,7 @@ class BFR:
         choose initial centroids
         '''
 
-        centroids = self.__centroid_selection(mtx, k)
+        centroids = self.__centroid_selection(mtx, k, dims)
         #index numbers for the newly selected centroids
         c_inds = np.arange(k).reshape((k,1))
         #append indices to end of centroid list
@@ -195,6 +209,36 @@ class BFR:
         
         return same_cents
 
+    def __matrix_insert(self, old_c, new_c):
+        """
+        Attempt to fix the "dissapearing centroid" issue.
+        reinsert discarded centroid into new matrix
+        """
+        #get IDs for centroids
+        old_ids = np.unique(old_c[:,-1])
+        new_ids = np.unique(new_c[:,-1])
+
+        #find missing indices
+        missed = np.setdiff1d(old_ids, new_ids)
+
+        #create empty matrix, same size as old
+        reconst = np.zeros((old_c.shape[0], old_c.shape[1]))
+        #fill it
+        #new values
+        for i in new_ids:
+            #get relevant indexes
+            rind = np.where(new_c[:,-1] == i)[0][0]
+            r2ind = np.where(old_c[:,-1] == i)[0][0]
+            reconst[r2ind,:] = new_c[rind,:]
+        for i in missed:
+            #get relevant index
+            rind = np.where(old_c[:,-1] == i)[0][0]
+            reconst[rind,:] = old_c[rind,:] 
+
+        #return reconstructed mtx
+        return reconst
+
+
     def __kmeans_converge(self, mtx, cents, k, dims):
         '''
         given a set of assigned points, average and reassign 
@@ -208,6 +252,12 @@ class BFR:
             #get new centroids from average of 
             new_cents = self.__recenter(mtx, dims)
 
+            if cents.shape[0] != new_cents.shape[0]:
+                #print("disappearing centroid")
+                #attempting to fix the "Disapearing Centroid" problem
+                new_cents = self.__matrix_insert(cents, new_cents)
+    
+                
             if self.__centroid_comp(cents, new_cents, dims) == True:
                 #centroids are equivalent, convergeance gained
                 converge = True
@@ -532,10 +582,12 @@ class BFR:
 
         return tgt
 
-    def __get_tightest_pair(self, mtx, dims):
+    def __get_tightest_pair(self, mtx, dims, orig_cts):
         '''
         given a matrix of rows of clusters, return the indices of the rows
         that are considered the "tightest", as well as the value
+        ORIG_CTS: index values of original centroids, make sure not to merge
+        groups that are both "REAL" clusters
         '''
 
         nb_rows = mtx.shape[0]
@@ -552,14 +604,19 @@ class BFR:
                 proj_tightness = self.__merged_tightness(mtx[i,:], mtx[j,:], dims)
                 #current distance less than minimum
                 if proj_tightness < min_tightness:
-                    #reset minimum
-                    min_tightness = proj_tightness
-                    #set new minimum indices
-                    min_inds = [i, j]
+                    #check assigned indices are not BOTH part of original matrices
+                    i1_check = i in orig_cts
+                    i2_check = j in orig_cts
+                    #only merge if at least one index is from a subgroup
+                    if (i1_check and i2_check) == False:
+                        #reset minimum
+                        min_tightness = proj_tightness
+                        #set new minimum indices
+                        min_inds = [i, j]
 
         return min_inds, min_tightness
 
-    def __hierar_cls_agg_tight(self, mtx, k, beta, dims):
+    def __hierar_cls_agg_tight(self, mtx, k, beta, dims, orig_cts):
         '''
         Perform  Agglomerative Hierarchical Clustering on the given matrix, assigning to each point
         an individual cluster and progressively merging the groups whose projected "tightness" is less
@@ -568,6 +625,8 @@ class BFR:
         k: number of clusters
         beta: rows who are tighter than this value are merged
         dims: dimensions
+        orig_cts: IDs of centroids from original Clustering Algorithm K. We want make sure we only 
+        merge if one of the subclusters available is not already assigned to a "Main" cluster.
         '''
 
         #stopping condition
@@ -577,7 +636,7 @@ class BFR:
         while stop_merge == False:
 
             #get the two tightest row indices, and the value
-            tight_ind, t_val = self.__get_tightest_pair(mtx[:,:-1], dims)
+            tight_ind, t_val = self.__get_tightest_pair(mtx, dims, orig_cts)
 
             #if the value is greater than beta, stop
             if t_val > beta:
@@ -640,6 +699,9 @@ class BFR:
         #get number of centroids
         octs_nb = centroids.shape[0]
 
+        #get IDs for the K centroids
+        k1_ids = np.unique(centroids[:,-1])
+
         #adjust IDs
         subclusters[:,-1] += octs_nb
         subcls_cts[:,-1] += octs_nb
@@ -665,7 +727,7 @@ class BFR:
             cls_plus_t = np.vstack((clustered_pts, tight_cls))
 
             #perform agglomerative hierarchical clustering on cls_plus_t
-            cls_merged = self.__hierar_cls_agg_tight(cls_plus_t, k2, beta, dims)
+            cls_merged = self.__hierar_cls_agg_tight(cls_plus_t, k2, beta, dims, k1_ids)
 
             #slice loose centroids
             loose_cls = subcls_cts[loose_inds,:]
@@ -752,6 +814,13 @@ class BFR:
 
         return [cluster.indexes for cluster in self.__clusters]
 
+    def get_centres(self):
+        """
+        Return Cluster Centroids
+        """
+
+        return [cluster.center for cluster in self.__clusters]
+
     def cluster_noPart(self):
         """
         Cluster the given data without partitioning it. Essentially going through
@@ -761,6 +830,8 @@ class BFR:
         #begin by performing K-Means on the data
 
         data = self.__data
+
+        self.__dims = data.shape[1]
 
         assignments_k, centroids_k = self.__kmeans_group(data, self.__k)
 
