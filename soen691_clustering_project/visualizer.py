@@ -17,7 +17,6 @@ color_list = [('red', '#e6194b'), ('green', '#3cb44b'), ('brown', '#aa6e28'), ('
               ('lightslategray', '#778899'), ('slategray', '#708090'), ('darkslategray', '#2F4F4F'),
               ('powder blue', '#9EB9D4'), ('gainsboro', '#DCDCDC'), ('salmon_crayola', '#FF91A4'),
               ('salmon', '#FA8072')]
-color_pool = cycle([color for (name, color) in color_list])
 
 
 class ClusterRepresentation:
@@ -55,7 +54,8 @@ def draw_canvas_cluster(ax, dimension, cluster_representation):
 
 
 class ClusteringVisualizer:
-    def __init__(self, number_canvas=1, number_columns=1, titles=None, x_labels=None, y_labels=None):
+    def __init__(self, number_canvas=1, number_columns=1, number_clusters=None, titles=None, x_labels=None,
+                 y_labels=None):
         self.__number_of_canvas = number_canvas
         self.__number_of_columns = number_columns
 
@@ -71,6 +71,12 @@ class ClusteringVisualizer:
             self.__x_labels = x_labels
         if y_labels is not None:
             self.__y_labels = y_labels
+        if number_clusters is not None:
+            if number_clusters < 0:
+                raise ValueError("Number of clusters '{}' should be >= 0".format(number_clusters))
+
+        self.__color_pool = cycle([color for (name, color) in color_list]) if number_clusters is None else cycle(
+            [color for (name, color) in color_list[:number_clusters]])
 
     def add_cluster(self, cluster, data=None, canvas=0, marker='.', markersize=None, color=None):
         if len(cluster) == 0:
@@ -80,7 +86,7 @@ class ClusteringVisualizer:
             raise ValueError("Canvas index '{}' is out of range [0; {}].".format(canvas, self.__number_of_canvas))
 
         if color is None:
-            color = next(color_pool)
+            color = next(self.__color_pool)
 
         cluster_representation = ClusterRepresentation(cluster, data, marker, markersize, color)
         self.__clusters[canvas].append(cluster_representation)
@@ -124,7 +130,7 @@ class ClusteringVisualizer:
         if figure is not None:
             cluster_figure = figure
         else:
-            cluster_figure = plt.figure(figsize=(12, 7))
+            cluster_figure = plt.figure(figsize=(14, 8))
 
         maximum_cols = self.__number_of_columns
         maximum_rows = math.ceil((self.__number_of_canvas + canvas_shift) / maximum_cols)
