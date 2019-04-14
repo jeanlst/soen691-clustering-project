@@ -27,7 +27,6 @@ Features
 --------
 
 * TODO
-    * Change HAC implementation to an efficient one using Priority Queue
     * Change comparators in KDTree class
 
 Credits
