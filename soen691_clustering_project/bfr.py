@@ -16,7 +16,7 @@ class BFR:
         this value
         """
 
-        self.__data = data
+        self.__data = np.array(data) if isinstance(data, list) else data
         self.__k = k
         self.__alpha = alpha
         self.__beta = beta
