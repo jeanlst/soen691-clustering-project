@@ -8,10 +8,19 @@ from collections import defaultdict
 
 from cure import Cure
 from kmeans import KMeans
+from bfr import BFR
 from hierarchical_agglomerative import HierarchicalAgglomerative
 from visualizer import ClusteringVisualizer
 
 import numpy as np
+from sklearn.datasets.samples_generator import (make_blobs,
+                                                make_circles,
+                                                make_moons)
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"""                             Helper Functions                                 """
+"""                                                                              """
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 
 def read_2dshaped(filename):
@@ -39,33 +48,57 @@ def plot_clustering(fig, data, clusters, x_label, y_label, title, ax=None):
     ax.set_title(title)
 
 
-if __name__ == '__main__':
-    all_data = read_all_2dshaped('./data/2d/shaped/', '.dat')
-    data_name = 'spiral'
+def get_data(data_name):
     data = []
     for cluster in all_data[data_name].values():
         data.extend(cluster)
+    return data
 
-    len_data = [len(cluster) for cluster in all_data[data_name].values()]
 
-    number_of_clusters = len(all_data[data_name].keys())
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"""                               Main Method                                    """
+"""                                                                              """
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-    X_1 = np.random.multivariate_normal(mean=[4, 0], cov=[[1, 0], [0, 1]], size=75)
-    X_2 = np.random.multivariate_normal(mean=[6, 6], cov=[[2, 0], [0, 2]], size=250)
-    X_3 = np.random.multivariate_normal(mean=[1, 5], cov=[[1, 0], [0, 2]], size=20)
-    df = np.concatenate([X_1, X_2, X_3])
+if __name__ == '__main__':
+    all_data = read_all_2dshaped('./data/2d/shaped/', '.dat')
+    dataset = get_data('spiral')
 
-    kmeans = KMeans(df.tolist(), 3)
+    len_data = [len(cluster) for cluster in all_data['spiral'].values()]
+    number_of_clusters = len(all_data['spiral'].keys())
+
+    from pyclustering.samples.definitions import FCPS_SAMPLES
+    from pyclustering.utils import read_sample
+
+    """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+    """                               Spherical 2D                                   """
+    """                                                                              """
+    """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+    df_list = read_sample(FCPS_SAMPLES.SAMPLE_LSUN)
+    n_clusters = 3
+
+    kmeans = KMeans(df_list, n_clusters)
     kmeans.clustering()
 
-    hac = HierarchicalAgglomerative(df.tolist(), 3)
+    hac = HierarchicalAgglomerative(df_list, n_clusters)
     hac.clustering()
 
-    cure = Cure(df.tolist(), 3, 0.3, 10)
+    cure = Cure(df_list, n_clusters, 0.2, 10)
     cure.clustering()
 
-    visualizer = ClusteringVisualizer(number_canvas=3, number_columns=1, titles=['KMeans', 'HAC', 'CURE'])
-    visualizer.add_clustering(kmeans.get_indexes(), df.tolist(), canvas=0)
-    visualizer.add_clustering(hac.get_indexes(), df.tolist(), canvas=1)
-    visualizer.add_clustering(cure.get_indexes(), df.tolist(), canvas=2)
+    bfr = BFR(data=df_list, k=n_clusters)
+    bfr.cluster_noPart()
+
+    visualizer = ClusteringVisualizer(number_canvas=4, number_columns=2, number_clusters=number_of_clusters,
+                                      titles=['KMEANS', 'HAC', 'CURE', 'BFR'])
+    visualizer.add_clustering(kmeans.get_indexes(), df_list, canvas=0)
+    visualizer.add_clustering(hac.get_indexes(), df_list, canvas=1)
+    visualizer.add_clustering(cure.get_indexes(), df_list, canvas=2)
+    visualizer.add_clustering(bfr.get_indexes(), df_list, canvas=3)
     visualizer.plot(invisible_axis=True)
+
+    """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+    """                               Non-Spherical 2D                               """
+    """                                                                              """
+    """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
