@@ -1,9 +1,15 @@
 
 """BFR implementation"""
+import glob
+import os
+from pathlib import Path
+
 import numpy as np
 import math
 from cluster import Cluster
+from bin_heap import BinHeap
 
+#the BFR class proper
 class BFR:
 
     def __init__(self, data=None, k=None, alpha=1, beta=1):
@@ -582,6 +588,24 @@ class BFR:
 
         return tgt
 
+    def __valid_merge(self, row1, row2, dims, orig_cts):
+        """
+        Verify whether a proposed merge is valid according to
+        whether the merged rows have at least one subcluster
+        """
+        #get IDs
+        id_1 = row1[(dims * 2) + 1]
+        id_2 = row2[(dims * 2) + 1]
+        #check if they are in the centroid list
+        check1 = id_1 in orig_cts
+        check2 = id_2 in orig_cts
+        #if at least one is not
+        if (check1 and check2) == False:
+            return True
+        #if both original centroids, invalid
+        return False
+
+
     def __get_tightest_pair(self, mtx, dims, orig_cts):
         '''
         given a matrix of rows of clusters, return the indices of the rows
@@ -604,9 +628,9 @@ class BFR:
                 proj_tightness = self.__merged_tightness(mtx[i,:], mtx[j,:], dims)
                 #current distance less than minimum
                 if proj_tightness < min_tightness:
-                    #check assigned indices are not BOTH part of original matrices
-                    i1_check = i in orig_cts
-                    i2_check = j in orig_cts
+                    #check assigned IDs are not BOTH part of original matrices
+                    i1_check = mtx[i,(dims * 2) + 1] in orig_cts
+                    i2_check = mtx[j,(dims * 2) + 1] in orig_cts
                     #only merge if at least one index is from a subgroup
                     if (i1_check and i2_check) == False:
                         #reset minimum
@@ -655,6 +679,141 @@ class BFR:
                 mtx = self.__merge_clusters(mtx, tight_ind, cls_nb)
 
         #return new matrix
+        return mtx
+
+    def __heap_clust(self, mtx, k, beta, dims, orig_cts):
+        """
+        Hierarchical Agglomerative Clustering using a priority queue implemented with a min_heap
+        Otherwise similar to above
+        mtx: matrix of assigned points (SUMS, SUMSQ, N, ID)
+        k: nb. of clusters
+        beta: merge rows that are "tighter" than this value
+        dims: dimensionality
+        orig_cts: original centroids
+        """
+
+        #Create Heap
+        m_heap = BinHeap()
+
+        #generate list of indices
+        row_inds = list(np.arange(mtx.shape[0]))
+
+        #counter for future indices
+        future_ind = mtx.shape[0]
+
+        #populate the heap with valid merges
+        nb_rows = mtx.shape[0]
+
+        #for each pair of rows
+        for i in range(nb_rows):
+            for j in range(i + 1, nb_rows):
+
+                #get rows
+                r1 = mtx[i,:]
+                r2 = mtx[j,:]
+
+                #check for valid merge
+                if self.__valid_merge(r1, r2, dims, orig_cts):
+
+                    #get tightness
+                    tightn = self.__merged_tightness(r1, r2, dims)
+
+                    #get indices
+                    index1 = row_inds[i]
+                    index2 = row_inds[j]
+
+                    ilist = [index1, index2]
+
+                    #create heap object
+                    addh = [tightn,ilist]
+
+                    #add to heap
+                    m_heap.insert(addh)
+
+        #heap populated, now check for merges
+
+        looping = True
+
+        while looping == True:
+            #if heap is empty, break
+            if m_heap.heapSize() == 0:
+                break
+
+            #check top element of heap
+            top = m_heap.top()
+
+            #if value exceeds beta, break
+            if top[0] > beta:
+                break
+
+            #assume value is still valid
+            #check if indices still exist, not merged before
+            m_inds = top[1]
+
+            inds_exist = all(e in row_inds for e in m_inds)
+
+            if inds_exist == True:
+                #proceed to merge and update heap
+
+                #get, from inds, matching rows in the matrix
+                ir1 = row_inds.index(m_inds[0])
+                ir2 = row_inds.index(m_inds[1])
+
+                tight_ri = [ir1, ir2]
+
+                #get ID to use for merged
+                #get cluster number of first row to merge
+                cls_nb1 = mtx[ir1,dims * 2 + 1]
+                #get ID for second row to merge
+                cls_nb2 = mtx[ir2,dims * 2 + 1]
+                #take the minimum of the two
+                cls_nb = min(cls_nb1, cls_nb2)
+
+                #merge rows
+                mtx = self.__merge_clusters(mtx, tight_ri, cls_nb)
+
+                #remove indices from index list
+                row_inds.remove(m_inds[0])
+                row_inds.remove(m_inds[1])
+
+                #add new index to index list
+                row_inds.append(future_ind)
+                future_ind +=1
+
+                #get lnew row
+                nrow = mtx[-1,:]
+
+                #populate heap with tightness metrics for new row
+                for i in range(mtx.shape[0] - 1):
+                    #for every row except last (recently merged)
+                    crow = mtx[i,:]
+
+                    #if the merge is valid
+                    if self.__valid_merge(crow, nrow, dims, orig_cts):
+                        
+                        #same process as above during initialization
+                        #get tightness
+                        p_tight = self.__merged_tightness(nrow, crow, dims)
+
+                        #get associated row indices
+                        #latest for new row
+                        nr_ind = row_inds[-1]
+                        #get other row index
+                        cr_ind = row_inds[i] 
+
+                        inlst = [nr_ind, cr_ind]
+
+                        #create heap object
+                        nheap_o = [p_tight, inlst]
+
+                        #add to heap
+                        m_heap.insert(nheap_o)
+
+            #regardless of whether we have merged or not, pop top of heap
+            m_heap.remove()
+            #restart loop until end conditions fulfilled
+
+        #return reduced matrix
         return mtx
 
 
@@ -727,7 +886,11 @@ class BFR:
             cls_plus_t = np.vstack((clustered_pts, tight_cls))
 
             #perform agglomerative hierarchical clustering on cls_plus_t
-            cls_merged = self.__hierar_cls_agg_tight(cls_plus_t, k2, beta, dims, k1_ids)
+            #NAIVE IMPLEMENTATION: Commented out and use alternate version when ready
+            #cls_merged = self.__hierar_cls_agg_tight(cls_plus_t, k2, beta, dims, k1_ids)
+
+            #PRIORITY LIST IMPLEMENTATION:
+            cls_merged = self.__heap_clust(cls_plus_t, k2, beta, dims, k1_ids)
 
             #slice loose centroids
             loose_cls = subcls_cts[loose_inds,:]
@@ -998,3 +1161,21 @@ class BFR:
         self.__create_clusters(cents, final_assign)
 
         #done
+
+if __name__ == "__main__":
+    #testing
+
+    data_path = Path('./data/2d/shaped/flame.dat')
+
+    #load data
+    flame = np.loadtxt(data_path, delimiter="\t")
+
+    b = BFR(flame[:,:-1], 2)
+
+    print("Clustering...")
+
+    b.cluster_noPart()
+
+    print("Results:")
+    print(b.get_clusters())
+
