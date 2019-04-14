@@ -142,7 +142,10 @@ class BinHeap:
         top_ele = self.__heap[0]
         last_ele = self.__heap.pop()
         self.__size -= 1
-        self.__heap[0] = last_ele
+        if self.__size == 0:
+            self.__heap.append(last_ele)
+        else:
+            self.__heap[0] = last_ele
 
         #swap down
         self.__swapDown(0)
