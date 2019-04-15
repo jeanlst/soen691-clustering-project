@@ -53,6 +53,3 @@ class CureCluster(Cluster):
 
     def __repr__(self):
         return 'Cluster(Dist={}, Center={}, Points={})'.format(self.distance_closest, self.center, self.points)
-
-    def __str__(self):
-        return self.__repr__()
