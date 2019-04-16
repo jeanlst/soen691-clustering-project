@@ -25,15 +25,3 @@ Project assignment for SOEN-691. Falling in the category of Algorithm Implementa
 
 Features
 --------
-
-* TODO
-    * Change comparators in KDTree class
-
-Credits
--------
-
-This package was created with Cookiecutter_ and the `elgertam/cookiecutter-pipenv`_ project template, based on `audreyr/cookiecutter-pypackage`_.
-
-.. _Cookiecutter: https://github.com/audreyr/cookiecutter
-.. _`elgertam/cookiecutter-pipenv`: https://github.com/elgertam/cookiecutter-pipenv
-.. _`audreyr/cookiecutter-pypackage`: https://github.com/audreyr/cookiecutter-pypackage
