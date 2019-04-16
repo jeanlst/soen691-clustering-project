@@ -3,19 +3,21 @@
 """ Cure class."""
 import numpy as np
 from cluster import CureCluster
-from utils import squared_euclidean_distance
+from utils import squared_euclidean_distance, reservoir_sampling
 from kd_tree import KDTree
 from clustering import Clustering
 
 
 class Cure(Clustering):
-    def __init__(self, data, number_of_clusters, alpha, c):
-        # data is a Numpy-array with rows as points and k
-        # is the number of clusters
+    def __init__(self, data, number_of_clusters, alpha, c, sample_size=None):
         self.__data = data.tolist() if isinstance(data, np.ndarray) else data
         self.__k = number_of_clusters
         self.__alpha = alpha
         self.__c = c  # Representative points
+        self.__sampled_data = None
+        self.__sampling_reservoir = reservoir_sampling(sample_size) if sample_size is not None else None
+        if self.__sampling_reservoir is not None:
+            self.__sample_data()
 
         self.__dimension = len(data[0]) if len(data) > 0 else 0
 
@@ -85,7 +87,7 @@ class Cure(Clustering):
             closest_nodes = self.__KDTree_T.find_closest_nodes(point, euclidean_dist)
             for candidate_distance, kdtree_node in closest_nodes:
                 if candidate_distance < closest_distance and kdtree_node is not None \
-                        and kdtree_node.payload is not x:
+                    and kdtree_node.payload is not x:
                     closest_distance = candidate_distance
                     closest_cluster = kdtree_node.payload
 
@@ -137,7 +139,8 @@ class Cure(Clustering):
 
     def __create_heap(self):
         # Initializes each point as a Cluster object
-        self.__heap_q = [CureCluster(point, index) for index, point in enumerate(self.__data)]
+        self.__heap_q = [CureCluster(point, index) for index, point in
+                         enumerate(self.__sampled_data if self.__sampled_data is not None else self.__data)]
 
         for curr_cluster in self.__heap_q:
             curr_cluster.closest = min([k for k in self.__heap_q if curr_cluster != k],
@@ -151,6 +154,16 @@ class Cure(Clustering):
         for curr_cluster in self.__heap_q:
             for rep_point in curr_cluster.rep:
                 self.__KDTree_T.insert(rep_point, curr_cluster)
+
+    def __sample_data(self):
+        next(self.__sampling_reservoir)
+        samples = []
+        for idx, sample in enumerate(self.__data):
+            samples = self.__sampling_reservoir.send(idx)
+        samples.sort()
+        self.__sampled_data = []
+        for sample in samples:
+            self.__sampled_data.append(self.__data[sample])
 
     def __validate_arguments(self):
         if len(self.__data) == 0:

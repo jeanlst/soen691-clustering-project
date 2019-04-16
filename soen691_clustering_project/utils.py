@@ -26,7 +26,7 @@ def squared_euclidean_distance(x, y):
 def reservoir_sampling(size):
     i, sample = 0, []
     while True:
-        item = yield i, sample
+        item = yield sample
         i += 1
         k = np.random.randint(0, i)
         if len(sample) < size:
