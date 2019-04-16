@@ -2,21 +2,20 @@
 
 """Visualizer class."""
 from matplotlib import pyplot as plt
-from matplotlib.figure import Figure
 from matplotlib.gridspec import GridSpec
 from itertools import cycle
 import math
 
 color_list = [('red', '#e6194b'), ('green', '#3cb44b'), ('brown', '#aa6e28'), ('blue', '#0000FF'), ('cyan', '#46f0f0'),
               ('purple', '#911eb4'), ('orange', '#f58231'), ('magenta', '#f032e6'), ('grey', '#808080'),
-              ('pink', '#fabebe'), ('teal', '#008080'), ('lavender', '#e6beff'), ('yellow', '#ffe119'),
-              ('beige', '#fffac8'), ('maroon', '#800000'), ('mint', '#aaffc3'), ('olive', '#808000'),
-              ('coral', '#ffd8b1'), ('navy', '#000080'), ('rosy brown', '#bd8e8c'), ('white', '#FFFFFF'),
-              ('sky blue', '#56B4E9'), ('bluish green', '#009E73'), ('vermilion', '#D55E00'),
-              ('reddish purple', '#CC79A7'), ('lime', '#d2f53c'), ('blue violet', '#8c28e7'), ('dimgray', '#696969'),
-              ('lightslategray', '#778899'), ('slategray', '#708090'), ('darkslategray', '#2F4F4F'),
+              ('pink', '#fabebe'), ('teal', '#008080'), ('lavender', '#e6beff'), ('blue violet', '#8c28e7'),
+              ('bluish green', '#009E73'), ('maroon', '#800000'), ('mint', '#aaffc3'), ('olive', '#808000'),
+              ('coral', '#ffd8b1'), ('navy', '#000080'), ('rosy brown', '#bd8e8c'), ('lightslategray', '#778899'),
+              ('sky blue', '#56B4E9'), ('beige', '#fffac8'), ('vermilion', '#D55E00'),
+              ('reddish purple', '#CC79A7'), ('lime', '#d2f53c'), ('yellow', '#ffe119'), ('dimgray', '#696969'),
+              ('salmon', '#FA8072'), ('slategray', '#708090'), ('darkslategray', '#2F4F4F'),
               ('powder blue', '#9EB9D4'), ('gainsboro', '#DCDCDC'), ('salmon_crayola', '#FF91A4'),
-              ('salmon', '#FA8072')]
+              ('white', '#FFFFFF')]
 
 
 class ClusterRepresentation:
@@ -55,7 +54,7 @@ def draw_canvas_cluster(ax, dimension, cluster_representation):
 
 class ClusteringVisualizer:
     def __init__(self, number_canvas=1, number_columns=1, number_clusters=None, titles=None, x_labels=None,
-                 y_labels=None):
+                 y_labels=None, fig_title=None):
         self.__number_of_canvas = number_canvas
         self.__number_of_columns = number_columns
 
@@ -64,6 +63,7 @@ class ClusteringVisualizer:
         self.__titles = [None for _ in range(number_canvas)]
         self.__x_labels = [None for _ in range(number_canvas)]
         self.__y_labels = [None for _ in range(number_canvas)]
+        self.__fig_title = None
 
         if titles is not None:
             self.__titles = titles
@@ -71,6 +71,8 @@ class ClusteringVisualizer:
             self.__x_labels = x_labels
         if y_labels is not None:
             self.__y_labels = y_labels
+        if fig_title is not None:
+            self.__fig_title = fig_title
         if number_clusters is not None:
             if number_clusters < 0:
                 raise ValueError("Number of clusters '{}' should be >= 0".format(number_clusters))
@@ -136,18 +138,21 @@ class ClusteringVisualizer:
         maximum_rows = math.ceil((self.__number_of_canvas + canvas_shift) / maximum_cols)
         grid_spec = GridSpec(maximum_rows, maximum_cols)
 
+        if self.__fig_title is not None:
+            cluster_figure.suptitle(self.__fig_title, fontsize=20, y=0.995, color='red')
+
         for index_canvas in range(len(self.__clusters)):
             canvas_data = self.__clusters[index_canvas]
             if len(canvas_data) == 0:
                 continue
 
             dimension = self.__dimensions[index_canvas]
-
             # ax = axes[real_index];
             if dimension == 1 or dimension == 2:
                 ax = cluster_figure.add_subplot(grid_spec[index_canvas + canvas_shift])
             else:
                 ax = cluster_figure.add_subplot(grid_spec[index_canvas + canvas_shift], projection='3d')
+                # ax.view_init(7, -80)
 
             if len(canvas_data) == 0:
                 plt.setp(ax, visible=False)
