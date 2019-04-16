@@ -285,9 +285,9 @@ if __name__ == '__main__':
     visualizer = ClusteringVisualizer(number_canvas=4, number_columns=2, number_clusters=n_clusters,
                                       titles=['KMEANS', 'HAC', 'CURE', 'BFR'], fig_title='FCPS Atom')
     visualizer.add_clustering(kmeans.get_indexes(), df_list, canvas=0)
-    # visualizer.add_clustering(hac.get_indexes(), df_list, canvas=1)
-    # visualizer.add_clustering(cure.get_indexes(), df_list, canvas=2)
-    # visualizer.add_clustering(bfr.get_indexes(), df_list, canvas=3)
+    visualizer.add_clustering(hac.get_indexes(), df_list, canvas=1)
+    visualizer.add_clustering(cure.get_indexes(), df_list, canvas=2)
+    visualizer.add_clustering(bfr.get_indexes(), df_list, canvas=3)
     visualizer.plot(invisible_axis=True)
 
     dataset_name = 'fcps_chainlink'
