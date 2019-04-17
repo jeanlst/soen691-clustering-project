@@ -87,7 +87,7 @@ class Cure(Clustering):
             closest_nodes = self.__KDTree_T.find_closest_nodes(point, euclidean_dist)
             for candidate_distance, kdtree_node in closest_nodes:
                 if candidate_distance < closest_distance and kdtree_node is not None \
-                    and kdtree_node.payload is not x:
+                        and kdtree_node.payload is not x:
                     closest_distance = candidate_distance
                     closest_cluster = kdtree_node.payload
 
