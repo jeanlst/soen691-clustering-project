@@ -44,6 +44,7 @@ def plot_bars(fig, bars, heights, title, ax=None):
     bar_list[3].set_color('grey')
 
     ax.set_ylabel('Accuracy')
+    ax.set_xlabel('Clustering Algorithm')
     ax.set_yticklabels(['{:}%'.format(x) for x in ax.get_yticks()])
     ax.set_title(title, color='red')
 
@@ -59,17 +60,26 @@ if __name__ == '__main__':
     figure = plt.figure(figsize=(14, 8))
     figure.set_tight_layout(True)
 
-    ax_circles = figure.add_subplot(221)
-    ax_spiral = figure.add_subplot(222)
-    ax_jain = figure.add_subplot(223)
-    ax_pathbased = figure.add_subplot(224)
+    # ax_circles = figure.add_subplot(221)
+    # ax_spiral = figure.add_subplot(222)
+    # ax_jain = figure.add_subplot(223)
+    # ax_pathbased = figure.add_subplot(224)
 
-    plot_bars(figure, algorithms, circles, 'Circles', ax=ax_circles)
-    plot_bars(figure, algorithms, spiral, 'Path-based2: SPIRAL', ax=ax_spiral)
-    plot_bars(figure, algorithms, jain, 'Jain', ax=ax_jain)
-    plot_bars(figure, algorithms, pathbased, 'Path-based1', ax=ax_pathbased)
+    # plot_bars(figure, algorithms, circles, 'Circles', ax=ax_circles)
+    # plot_bars(figure, algorithms, spiral, 'Path-based2: SPIRAL', ax=ax_spiral)
+    # plot_bars(figure, algorithms, jain, 'Jain', ax=ax_jain)
+    # plot_bars(figure, algorithms, pathbased, 'Path-based1', ax=ax_pathbased)
+    # plt.show()
 
-    plt.show()
+    # plot_bars(figure, algorithms, circles, 'Circles')
+    # plt.show()
+    # plot_bars(figure, algorithms, spiral, 'Path-based2: SPIRAL')
+    # plt.show()
+    # plot_bars(figure, algorithms, jain, 'Jain')
+    # plt.show()
+    # plot_bars(figure, algorithms, pathbased, 'Path-based1')
+    # plt.show()
+
 
     atom = [30.874999999999996, 47.5, 100.0, 30.874999999999996]
     chain_link = [65.4, 81.80000000000001, 100.0, 64.8]
@@ -79,10 +89,16 @@ if __name__ == '__main__':
     figure = plt.figure(figsize=(14, 8))
     figure.set_tight_layout(True)
 
-    ax_atom = figure.add_subplot(121)
-    ax_chain_link = figure.add_subplot(122)
+    # ax_atom = figure.add_subplot(121)
+    # ax_chain_link = figure.add_subplot(122)
+    #
+    # plot_bars(figure, algorithms, atom, 'FCPS Atom', ax=ax_atom)
+    # plot_bars(figure, algorithms, chain_link, 'FCPS Chainlink', ax=ax_chain_link)
+    #
+    # plt.show()
 
-    plot_bars(figure, algorithms, atom, 'FCPS Atom', ax=ax_atom)
-    plot_bars(figure, algorithms, chain_link, 'FCPS Chainlink', ax=ax_chain_link)
-
+    # plot_bars(figure, algorithms, atom, 'FCPS Atom')
+    # plt.show()
+    plot_bars(figure, algorithms, chain_link, 'FCPS Chainlink')
     plt.show()
+
