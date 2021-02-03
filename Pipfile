@@ -11,7 +11,7 @@ tox = "*"
 coverage = "*"
 pytest = "*"
 pytest-runner = "*"
-PyInstaller = "*"
+PyInstaller = ">=3.6"
 Sphinx = "*"
 twine = "*"
 
